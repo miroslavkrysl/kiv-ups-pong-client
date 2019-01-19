@@ -1,6 +1,7 @@
 package Pong;
 
 import Pong.Game.Game;
+import Pong.Gui.Controls;
 import Pong.Gui.GameScene;
 import Pong.Network.Connection;
 import Pong.Network.PacketHandler;
@@ -11,7 +12,9 @@ import javafx.stage.Stage;
 public class App extends Application{
     private Connection connection;
     private PacketHandler packetHandler;
-    private Game game;
+    private Controls controls;
+
+
     private Scene loginScene;
     private Scene overlayScene;
     private Scene lobbyScene;
@@ -24,16 +27,17 @@ public class App extends Application{
     }
 
     @Override
+    public void init() throws Exception {
+        super.init();
+        packetHandler = new PacketHandler();
+        controls = new Controls();
+    }
+
+    @Override
     public void start(Stage stage) throws Exception {
         stage.setScene(new GameScene(new Game(this, "hello", "jello", null), 0.7));
         stage.show();
     }
-
-//    private App() {
-//        packetHandler = new PacketHandler();
-//
-//        // create scenes
-//    }
 
     public long getCurrentTime() {
         return System.currentTimeMillis() + timeDifference;
@@ -55,11 +59,7 @@ public class App extends Application{
         return packetHandler;
     }
 
-    public Game getGame() {
-        return game;
-    }
-
-    public void setGame(Game game) {
-        this.game = game;
+    public Controls getControls() {
+        return controls;
     }
 }

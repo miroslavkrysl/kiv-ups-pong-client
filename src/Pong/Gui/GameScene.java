@@ -1,21 +1,28 @@
 package Pong.Gui;
 
-import Pong.Game.BallState;
+import Pong.Game.Ball;
 import Pong.Game.Game;
-import Pong.Game.PlayerState;
+import Pong.Game.Player;
+import Pong.Game.Types.Action;
+import Pong.Game.Types.Direction;
 import Pong.Game.Types.Side;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
-import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polyline;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.StrokeLineCap;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GameScene extends Scene{
     public static final int BORDER_WIDTH = 6;
@@ -23,11 +30,14 @@ public class GameScene extends Scene{
     public static final int PADDING = 50;
 
     private Game game;
-    private Rectangle playerLeft;
-    private Rectangle playerRight;
-    private Circle ball;
+    private Rectangle playerLeftRectangle;
+    private Rectangle playerRightRectangle;
+    private Circle ballCircle;
 
     private AnimationTimer animationTimer;
+
+    private Set<KeyCode> pressedKeys;
+    private Set<Action> activeActions;
 
     private double ratio;
 
@@ -36,20 +46,23 @@ public class GameScene extends Scene{
         this.game = game;
         this.ratio = ratio;
 
-        this.playerLeft = createPlayerRectangle();
-        this.playerLeft.setX(- PlayerState.WIDTH * ratio);
+        this.pressedKeys = Collections.synchronizedSet(new HashSet<>());
+        this.activeActions = Collections.synchronizedSet(new HashSet<>());
 
-        this.playerRight = createPlayerRectangle();
-        this.playerRight.setX(Game.WIDTH * ratio);
+        this.playerLeftRectangle = createPlayerRectangle();
+        this.playerLeftRectangle.setX(- Player.WIDTH * ratio);
 
-        this.ball = createBallCircle();
+        this.playerRightRectangle = createPlayerRectangle();
+        this.playerRightRectangle.setX(Game.WIDTH * ratio);
 
-//        this.animationTimer = new AnimationTimer() {
-//            @Override
-//            public void handle(long l) {
-//                updateGameObjects();
-//            }
-//        };
+        this.ballCircle = createBallCircle();
+
+        this.animationTimer = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                updateGameObjects();
+            }
+        };
 
         Polyline topBorder = createBorder();
         topBorder.setTranslateY(- BORDER_WIDTH / 2.0 * ratio);
@@ -63,26 +76,31 @@ public class GameScene extends Scene{
                 topBorder,
                 bottomBorder,
                 net,
-                ball,
-                playerLeft,
-                playerRight);
+                ballCircle,
+                playerLeftRectangle,
+                playerRightRectangle);
 
         StackPane root = new StackPane(gameObjects);
         root.setBackground(new Background(new BackgroundFill(Color.BLACK, null, null)));
         root.setPadding(new Insets(PADDING * ratio));
 
+        initHandlers();
+
         this.setRoot(root);
+        this.animationTimer.start();
     }
 
     private Rectangle createPlayerRectangle() {
-        Rectangle rectangle = new Rectangle(PlayerState.WIDTH * ratio, PlayerState.HEIGHT * ratio);
+        Rectangle rectangle = new Rectangle(Player.WIDTH * ratio, Player.HEIGHT * ratio);
         rectangle.setFill(Color.WHITE);
         rectangle.setStrokeWidth(0);
         return rectangle;
     }
 
     private Circle createBallCircle() {
-        Circle ball = new Circle(BallState.RADIUS * ratio);
+        Circle ball = new Circle(Ball.RADIUS * ratio);
+        ball.setCenterX(Game.WIDTH / 2.0 * ratio);
+        ball.setCenterY(Game.HEIGHT / 2.0 * ratio);
         ball.setFill(Color.WHITE);
         ball.setStrokeWidth(0);
         return ball;
@@ -93,16 +111,18 @@ public class GameScene extends Scene{
         border.setStrokeWidth(BORDER_WIDTH * ratio);
         border.setStroke(Color.WHITE);
         border.setFill(Color.TRANSPARENT);
+        border.setStrokeLineCap(StrokeLineCap.ROUND);
         return border;
     }
 
     private Polyline createNet() {
-        double netX = (Game.WIDTH / 2.0 - NET_WIDTH / 2.0) * ratio;
+        double netX = (Game.WIDTH / 2.0) * ratio;
         Polyline net = new Polyline(netX, 0, netX, Game.HEIGHT * ratio);
         net.setStrokeWidth(NET_WIDTH * ratio);
         net.setStroke(Color.WHITE);
-        double dash = Game.HEIGHT / 21.0;
-                net.getStrokeDashArray().addAll(dash, dash);
+        double dash = Game.HEIGHT / 21.0 * ratio;
+        net.getStrokeDashArray().addAll(dash);
+        net.setStrokeLineCap(StrokeLineCap.ROUND);
         net.setFill(Color.TRANSPARENT);
         return net;
     }
@@ -111,51 +131,97 @@ public class GameScene extends Scene{
         long now = game.getApp().getCurrentTime();
 
         // player left
-        PlayerState playerStateLeft = game.getPlayerStateLeft();
-        double playerLeftY = playerStateLeft.getPosition();
+        Player playerLeft = game.getPlayerLeft();
 
-        playerLeftY += (now - playerStateLeft.getTimestamp())
-                * (PlayerState.SPEED / 1000.0)
-                * playerStateLeft.getDirection().getValue() * -1;
-        playerLeftY += (Game.HEIGHT / 2.0) - (PlayerState.HEIGHT / 2.0);
-        playerLeftY *= ratio;
+        double playerLeftY = playerLeft.getPosition(now) * -1
+                + (Game.HEIGHT / 2.0) - (Player.HEIGHT / 2.0);
 
 
         // player right
-        PlayerState playerStateRight = game.getPlayerStateRight();
-        double playerRightY = playerStateRight.getPosition();
+        Player playerRight = game.getPlayerRight();
 
-        playerRightY += (now - playerStateRight.getTimestamp())
-                * (PlayerState.SPEED / 1000.0)
-                * playerStateRight.getDirection().getValue() * -1;
-        playerRightY += (Game.HEIGHT / 2.0) - (PlayerState.HEIGHT / 2.0);
-        playerRightY *= ratio;
+        double playerRightY = playerRight.getPosition(now) * -1
+                + (Game.HEIGHT / 2.0) - (Player.HEIGHT / 2.0);
 
 
-        // ball
-        BallState ballState = game.getBallState();
+        // ballCircle
+        int[] ballPos = game.getBall().getPosition(now, game.getPhase());
+        ballPos[0] *= -1;
+        ballPos[0] += Game.WIDTH / 2.0;
+        ballPos[1] *= -1;
+        ballPos[1] += Game.HEIGHT / 2.0;
 
-        double hypotenuse = (now - ballState.getTimestamp())
-                * (ballState.getSpeed() / 1000.0);
+        playerLeftRectangle.setY(playerLeftY * ratio);
+        playerRightRectangle.setY(playerRightY * ratio);
+        ballCircle.setCenterX(ballPos[0] * ratio);
+        ballCircle.setCenterY(ballPos[1] * ratio);
+    }
 
-        double legY = Math.sin(ballState.getAngle()) * hypotenuse;
-        double legX = Math.cos(ballState.getAngle()) * hypotenuse;
+    private void initHandlers() {
+        this.setOnKeyPressed(keyEvent -> {
+            KeyCode key = keyEvent.getCode();
 
-        double ballX = ballState.getSide() == Side.LEFT
-                ? legX
-                : Game.WIDTH - legX;
-        ballX *= ratio;
+            if (pressedKeys.contains(key)) {
+                return;
+            }
+            pressedKeys.add(key);
 
-        double ballY = legY % Game.HEIGHT;
-        if ((legY / Game.HEIGHT) % 2 == 0) {
-            ballY *= -1;
-        }
-        ballY += ballState.getPosition();
+            PlayerAction playerAction = game.getApp().getControls().getPlayerAction(key);
+
+            if (playerAction == null) {
+                return;
+            }
+
+            if (game.getType() == Game.Type.NET
+                && playerAction.side != game.getPlayerSide()) {
+                return;
+            }
 
 
-        playerLeft.setY(playerLeftY);
-        playerRight.setY(playerRightY);
-        ball.setCenterX(ballX);
-        ball.setCenterY(ballY);
+                long now = game.getApp().getCurrentTime();
+            Player player = game.getPlayer(playerAction.side);
+            Direction direction = Direction.STOP;
+
+            switch (playerAction.action) {
+                case UP:
+                    direction = Direction.UP;
+                    break;
+                case DOWN:
+                    direction = Direction.DOWN;
+                    break;
+            }
+
+            player.changeState(now, player.getPosition(now), direction);
+        });
+
+
+        this.setOnKeyReleased(keyEvent -> {
+            KeyCode key = keyEvent.getCode();
+
+            pressedKeys.remove(key);
+
+            Controls controls = game.getApp().getControls();
+            PlayerAction playerAction = controls.getPlayerAction(key);
+
+            if (playerAction == null) {
+                return;
+            }
+
+            long now = game.getApp().getCurrentTime();
+            Player player = game.getPlayer(playerAction.side);
+
+            switch (playerAction.action) {
+                case UP:
+                    if (pressedKeys.contains(controls.getKeyCode(playerAction.side, Action.DOWN))){
+                        return;
+                    }
+                case DOWN:
+                    if (pressedKeys.contains(controls.getKeyCode(playerAction.side, Action.UP))){
+                        return;
+                    }
+            }
+
+            player.changeState(now, player.getPosition(now), Direction.STOP);
+        });
     }
 }

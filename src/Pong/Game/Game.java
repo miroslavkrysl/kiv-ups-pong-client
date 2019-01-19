@@ -2,7 +2,6 @@ package Pong.Game;
 
 import Pong.App;
 import Pong.Game.Types.Side;
-import Pong.Gui.GameScene;
 import com.sun.istack.internal.NotNull;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -10,9 +9,15 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
 public class Game {
-    enum Type {
+    public enum Type {
         LOCAL,
         NET
+    }
+
+    public enum Phase {
+        WAITING,
+        START,
+        PLAYING,
     }
 
     public static final int WIDTH = 1920;
@@ -20,7 +25,6 @@ public class Game {
 
     private App app;
     private Type type;
-    private GameScene scene;
 
     private Side playerSide;
 
@@ -30,21 +34,24 @@ public class Game {
     private IntegerProperty scoreLeft;
     private IntegerProperty scoreRight;
 
-    private ObjectProperty<PlayerState> playerStateLeft;
-    private ObjectProperty<PlayerState> playerStateRight;
-    private ObjectProperty<BallState> ballState;
+    private ObjectProperty<Phase> phase;
+
+    private Player playerLeft;
+    private Player playerRight;
+    private Ball ball;
 
     public Game(@NotNull App app, String nicknameLeft, String nicknameRight, Side side) {
         long now = app.getCurrentTime();
 
         this.app = app;
+        this.phase = new SimpleObjectProperty<>(Phase.WAITING);
         this.nicknameLeft = nicknameLeft;
         this.nicknameRight = nicknameRight;
         this.scoreLeft = new SimpleIntegerProperty(0);
         this.scoreRight = new SimpleIntegerProperty(0);
-        this.playerStateLeft = new SimpleObjectProperty<>(new PlayerState(now));
-        this.playerStateRight = new SimpleObjectProperty<>(new PlayerState(now));
-        this.ballState = new SimpleObjectProperty<>(new BallState(now));
+        this.playerLeft = new Player(now);
+        this.playerRight = new Player(now);
+        this.ball = new Ball(now);
         this.playerSide = side;
 
         if (side == null) {
@@ -53,8 +60,6 @@ public class Game {
         else {
             this.type = Type.NET;
         }
-
-        this.scene = new GameScene(this, 0.7);
     }
 
     public App getApp() {
@@ -65,8 +70,15 @@ public class Game {
         return type;
     }
 
-    public GameScene getScene() {
-        return scene;
+    public Player getPlayer(Side side) {
+        switch (side) {
+            case LEFT:
+                return playerLeft;
+            case RIGHT:
+                return playerRight;
+        }
+
+        return null;
     }
 
     public Side getPlayerSide() {
@@ -97,27 +109,23 @@ public class Game {
         return scoreRight;
     }
 
-    public PlayerState getPlayerStateLeft() {
-        return playerStateLeft.get();
+    public Phase getPhase() {
+        return phase.get();
     }
 
-    public ObjectProperty<PlayerState> playerStateLeftProperty() {
-        return playerStateLeft;
+    public ObjectProperty<Phase> phaseProperty() {
+        return phase;
     }
 
-    public PlayerState getPlayerStateRight() {
-        return playerStateRight.get();
+    public Player getPlayerLeft() {
+        return playerLeft;
     }
 
-    public ObjectProperty<PlayerState> playerStateRightProperty() {
-        return playerStateRight;
+    public Player getPlayerRight() {
+        return playerRight;
     }
 
-    public BallState getBallState() {
-        return ballState.get();
-    }
-
-    public ObjectProperty<BallState> ballStateProperty() {
-        return ballState;
+    public Ball getBall() {
+        return ball;
     }
 }

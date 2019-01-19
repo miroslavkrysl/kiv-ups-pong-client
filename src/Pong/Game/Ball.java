@@ -7,10 +7,13 @@ import javafx.beans.property.*;
 
 public class Ball {
     public static final int RADIUS = 25;
-    public static final int POSITION_MAX = (Game.HEIGHT / 2) - RADIUS;
-    public static final int POSITION_MIN = -(Game.HEIGHT / 2) + RADIUS;
-    public static final int ANGLE_MAX = 60;
-    public static final int ANGLE_MIN = -60;
+    public static final int Y_MAX = (Game.HEIGHT / 2) - RADIUS;
+    public static final int Y_MIN = -(Game.HEIGHT / 2) + RADIUS;
+    public static final int X_MAX = (Game.WIDTH / 2) - RADIUS;
+    public static final int X_MIN = -(Game.WIDTH / 2) + RADIUS;
+    public static final int Y_RANGE = Y_MAX - Y_MIN;
+    public static final int ANGLE_MAX = 50;
+    public static final int ANGLE_MIN = -50;
     public static final int SPEED_MAX = 1920;
     public static final int SPEED_MIN = 640;
     public static final Side INIT_SIDE = Side.LEFT;
@@ -78,28 +81,37 @@ public class Ball {
         }
     }
 
-    public int[] getPosition(long when, Game.Phase phase) {
+    synchronized public int[] getPosition(long when, Game.Phase phase) {
         double hypotenuse = (when - getTimestamp())
                 * (getSpeed() / 1000.0);
 
-        double legY = Math.sin(getAngle()) * hypotenuse;
-        double legX = Math.cos(getAngle()) * hypotenuse;
+        double rad = Math.toRadians(getAngle());
+        double legX = Math.cos(rad) * hypotenuse;
+        double legY = Math.sin(rad) * hypotenuse;
 
         double x = getSide() == Side.LEFT
-                ? legX - Game.WIDTH / 2.0
-                : Game.WIDTH / 2.0 - legX;
+                ? legX - X_MAX
+                : X_MAX - legX;
 
         if (phase == Game.Phase.START || phase == Game.Phase.WAITING) {
             x += getSide() == Side.LEFT
-                    ? Game.WIDTH / 2.0
-                    : - Game.WIDTH / 2.0;
+                    ? X_MAX
+                    : - X_MAX;
         }
 
-        double y = legY % Game.HEIGHT;
-        if ((legY / Game.HEIGHT) % 2 == 0) {
-            y *= -1;
+        double y = (Math.signum(rad)) * (legY + getPosition()) + Y_MAX;
+        double mod = y % (Y_MAX + Y_MAX);
+
+        switch (((int)(y / (Y_MAX + Y_MAX)) + (rad < 0 ? 1 : 0)) % 2) {
+            case 0:
+                y = mod;
+                break;
+            case 1:
+                y = Y_MAX + Y_MAX - mod;
+                break;
         }
-        y += getPosition();
+
+        y -= Y_MAX;
 
         return new int[] {(int)x, (int)y};
     }

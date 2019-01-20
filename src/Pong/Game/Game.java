@@ -1,32 +1,27 @@
 package Pong.Game;
 
 import Pong.App;
+import Pong.Game.Types.GamePhase;
 import Pong.Game.Types.Side;
 import com.sun.istack.internal.NotNull;
+import javafx.animation.AnimationTimer;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
+import java.util.Random;
+
 public class Game {
-    public enum Type {
-        LOCAL,
-        NET
-    }
-
-    public enum Phase {
-        WAITING,
-        START,
-        PLAYING,
-    }
-
     public static final int WIDTH = 1920;
     public static final int HEIGHT = 1080;
+    public static final long START_DELAY = 3000;
 
     private App app;
-    private Type type;
+    private Random random;
+    private AnimationTimer timer;
 
-    private Side playerSide;
+    private boolean local;
+    private Side side;
 
     private String nicknameLeft;
     private String nicknameRight;
@@ -34,40 +29,130 @@ public class Game {
     private IntegerProperty scoreLeft;
     private IntegerProperty scoreRight;
 
-    private ObjectProperty<Phase> phase;
-
     private Player playerLeft;
     private Player playerRight;
     private Ball ball;
 
-    public Game(@NotNull App app, String nicknameLeft, String nicknameRight, Side side) {
-        long now = app.getCurrentTime();
+    private Side serviceSide;
 
+    private ObjectProperty<GamePhase> phase;
+
+    private Game(@NotNull App app) {
         this.app = app;
-        this.phase = new SimpleObjectProperty<>(Phase.WAITING);
+        this.serviceSide = Side.LEFT;
+
+        long now = getTime();
+
+        playerLeft = new Player(now);
+        playerRight = new Player(now);
+        ball = new Ball(now);
+        random = new Random(now);
+
+        timer = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                gameLoop();
+            }
+        };
+        timer.start();
+    }
+
+    public Game(@NotNull App app, String nicknameLeft, String nicknameRight) {
+        this(app);
         this.nicknameLeft = nicknameLeft;
         this.nicknameRight = nicknameRight;
-        this.scoreLeft = new SimpleIntegerProperty(0);
-        this.scoreRight = new SimpleIntegerProperty(0);
-        this.playerLeft = new Player(now);
-        this.playerRight = new Player(now);
-        this.ball = new Ball(now);
-        this.playerSide = side;
+        this.local = true;
+        this.side = Side.LEFT;
+        this.phase = new SimpleObjectProperty<>(GamePhase.WAITING);
+    }
 
-        if (side == null) {
-            this.type = Type.LOCAL;
+    public Game(@NotNull App app, String nickname, String nicknameOpponent, Side side) {
+        this(app);
+        this.side = side;
+        this.local = false;
+
+        if (side == Side.LEFT) {
+            this.nicknameLeft = nickname;
+            this.nicknameRight = nicknameOpponent;
         }
         else {
-            this.type = Type.NET;
+            this.nicknameLeft = nicknameOpponent;
+            this.nicknameRight = nickname;
         }
     }
 
-    public App getApp() {
-        return app;
+    public void newRound() {
+        phase.set(GamePhase.WAITING);
+        ball.setState(new BallState(getTime()));
     }
 
-    public Type getType() {
-        return type;
+    public void startRound(BallState ballState) {
+        phase.set(GamePhase.START);
+        ball.setState(ballState);
+    }
+
+    public void startRound() {
+        phase.set(GamePhase.START);
+        ball.setState(new BallState(getTime() + START_DELAY, serviceSide, 0, 0, BallState.SPEED_MIN));
+    }
+
+    private void gameLoop() {
+        long now = app.getTime();
+        GamePhase phase = getPhase();
+
+        playerLeft.update(now);
+        playerRight.update(now);
+        ball.update(now, phase);
+
+        checkCollisions(now);
+    }
+
+    private void checkCollisions(long now) {
+        if (!isLocal() || (getPhase() != GamePhase.PLAYING && getPhase() != GamePhase.START)) {
+            return;
+        }
+
+        Side side;
+
+        if (ball.getX() <= -BallState.MOVEMENT_WIDTH / 2) {
+            side = Side.LEFT;
+        }
+        else if (ball.getX() >= BallState.MOVEMENT_WIDTH / 2) {
+            side = Side.RIGHT;
+        }
+        else {
+            return;
+        }
+
+        if (ball.getState().getSide() == side) {
+            return;
+        }
+
+        int playerY = getPlayer(side).getY();
+        int ballY = ball.getY();
+
+        if (ballY > playerY + (PlayerState.HEIGHT / 2) || ballY < playerY - (PlayerState.HEIGHT / 2)) {
+            switch (side) {
+                case LEFT:
+                    serviceSide = Side.LEFT;
+                    scoreRight.add(1);
+                    break;
+                case RIGHT:
+                    serviceSide = Side.RIGHT;
+                    scoreLeft.add(1);
+                    break;
+            }
+
+            newRound();
+            return;
+        }
+
+        int angle = random.nextInt(BallState.ANGLE_MAX - BallState.ANGLE_MIN) + BallState.ANGLE_MIN;
+        int speed = random.nextInt(BallState.SPEED_MAX - BallState.SPEED_MIN) + BallState.SPEED_MIN;
+
+        ball.setState(new BallState(now, side, ballY, angle, speed));
+
+        phase.set(GamePhase.PLAYING);
     }
 
     public Player getPlayer(Side side) {
@@ -81,8 +166,31 @@ public class Game {
         return null;
     }
 
-    public Side getPlayerSide() {
-        return playerSide;
+    public void setBallState(BallState state) {
+        this.ball.setState(state);
+    }
+
+    public void setPlayerState(PlayerState state, Side left) {
+        switch (side) {
+            case LEFT:
+                this.playerLeft.setState(state);
+                break;
+            case RIGHT:
+                this.playerRight.setState(state);
+                break;
+        }
+    }
+
+    public long getTime() {
+        return app.getTime();
+    }
+
+    public boolean isLocal() {
+        return local;
+    }
+
+    public Side getSide() {
+        return side;
     }
 
     public String getNicknameLeft() {
@@ -109,14 +217,6 @@ public class Game {
         return scoreRight;
     }
 
-    public Phase getPhase() {
-        return phase.get();
-    }
-
-    public ObjectProperty<Phase> phaseProperty() {
-        return phase;
-    }
-
     public Player getPlayerLeft() {
         return playerLeft;
     }
@@ -127,5 +227,13 @@ public class Game {
 
     public Ball getBall() {
         return ball;
+    }
+
+    public GamePhase getPhase() {
+        return phase.get();
+    }
+
+    public ObjectProperty<GamePhase> phaseProperty() {
+        return phase;
     }
 }

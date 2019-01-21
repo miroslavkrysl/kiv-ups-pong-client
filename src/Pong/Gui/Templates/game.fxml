@@ -71,7 +71,6 @@
           <Menu mnemonicParsing="false" text="Game">
             <items>
               <MenuItem mnemonicParsing="false" onAction="#leaveGame" text="Leave" />
-                  <MenuItem mnemonicParsing="false" onAction="#restartGame" text="Restart" />
             </items>
           </Menu>
         </menus>

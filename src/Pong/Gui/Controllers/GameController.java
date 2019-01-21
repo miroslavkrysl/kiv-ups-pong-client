@@ -5,6 +5,7 @@ import Pong.Game.Types.Action;
 import Pong.Game.Types.Direction;
 import Pong.Gui.Controls;
 import Pong.Gui.PlayerAction;
+import javafx.application.Platform;
 import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -55,7 +56,7 @@ public class GameController implements Initializable {
             game.startRound();
         }
 
-        PlayerAction playerAction = game.getApp().getControls().getPlayerAction(key);
+        PlayerAction playerAction = game.getOperator().getApp().getControls().getPlayerAction(key);
 
         if (playerAction == null) {
             return;
@@ -83,11 +84,9 @@ public class GameController implements Initializable {
     public void keyReleased(KeyEvent event) {
         KeyCode key = event.getCode();
 
-        System.out.println("hello");
-
         pressedKeys.remove(key);
 
-        Controls controls = game.getApp().getControls();
+        Controls controls = game.getOperator().getApp().getControls();
         PlayerAction playerAction = controls.getPlayerAction(key);
 
         if (playerAction == null) {
@@ -110,12 +109,12 @@ public class GameController implements Initializable {
 
     @FXML
     void leaveGame(ActionEvent event) {
-
+        Platform.runLater(() -> game.getOperator().requestLeaveGame());
     }
 
     @FXML
     void restartGame(ActionEvent event) {
-
+        Platform.runLater(() -> game.getOperator().requestRestartGame());
     }
 
     private static final int LINE_WIDTH = 10;

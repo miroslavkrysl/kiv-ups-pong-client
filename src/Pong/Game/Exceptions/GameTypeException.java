@@ -1,6 +1,6 @@
 package Pong.Game.Exceptions;
 
-public class GameTypeException extends Exception {
+public class GameTypeException extends GameException {
     public GameTypeException() {
         super();
     }

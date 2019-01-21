@@ -7,6 +7,7 @@ import com.sun.istack.internal.NotNull;
 import javafx.animation.AnimationTimer;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
 
 import java.util.Random;
@@ -40,6 +41,7 @@ public class Game {
     private Game(@NotNull App app) {
         this.app = app;
         this.serviceSide = Side.LEFT;
+        this.phase = new SimpleObjectProperty<>(GamePhase.WAITING);
 
         long now = getTime();
 
@@ -47,6 +49,9 @@ public class Game {
         playerRight = new Player(now);
         ball = new Ball(now);
         random = new Random(now);
+
+        scoreLeft = new SimpleIntegerProperty(0);
+        scoreRight = new SimpleIntegerProperty(0);
 
         timer = new AnimationTimer() {
             @Override
@@ -63,7 +68,6 @@ public class Game {
         this.nicknameRight = nicknameRight;
         this.local = true;
         this.side = Side.LEFT;
-        this.phase = new SimpleObjectProperty<>(GamePhase.WAITING);
     }
 
     public Game(@NotNull App app, String nickname, String nicknameOpponent, Side side) {
@@ -135,11 +139,11 @@ public class Game {
             switch (side) {
                 case LEFT:
                     serviceSide = Side.LEFT;
-                    scoreRight.add(1);
+                    scoreRight.set(scoreRight.get() + 1);
                     break;
                 case RIGHT:
                     serviceSide = Side.RIGHT;
-                    scoreLeft.add(1);
+                    scoreLeft.set(scoreLeft.get() + 1);
                     break;
             }
 
@@ -235,5 +239,9 @@ public class Game {
 
     public ObjectProperty<GamePhase> phaseProperty() {
         return phase;
+    }
+
+    public App getApp() {
+        return app;
     }
 }

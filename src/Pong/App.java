@@ -1,11 +1,13 @@
 package Pong;
 
 import Pong.Game.Game;
+import Pong.Gui.Controllers.GameController;
 import Pong.Gui.Controls;
-import Pong.Gui.GameScene;
 import Pong.Network.Connection;
 import Pong.Network.PacketHandler;
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
@@ -35,11 +37,26 @@ public class App extends Application{
 
     @Override
     public void start(Stage stage) throws Exception {
-        stage.setScene(new GameScene(new Game(this, "hello", "jello", null), 0.7));
+        Game game = new Game(this, "hello", "jello");
+        GameController controller = new GameController(game, 0.7);
+
+        FXMLLoader loader = new FXMLLoader(
+                getClass().getResource(
+                        "Gui/Templates/game_pane.fxml"
+                )
+        );
+        loader.setController(controller);
+
+        Parent root = loader.load();
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
         stage.show();
+
+        scene.lookup("#field").requestFocus();
     }
 
-    public long getCurrentTime() {
+    public long getTime() {
         return System.currentTimeMillis() + timeDifference;
     }
 

@@ -231,10 +231,12 @@ public class Connection implements Runnable {
                     operator.ballReleased(new BallState(packet.getItems()));
                     break;
                 case "game_over":
-                    operator.gameOver();
+                    int sL = Integer.parseInt(packet.getItems()[0]);
+                    int sR = Integer.parseInt(packet.getItems()[1]);
+                    operator.gameOver(sL, sR);
                     break;
                 case "game_ended":
-                    operator.gameOver();
+                    operator.gameEnded();
                     break;
             }
         }

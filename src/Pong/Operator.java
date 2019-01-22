@@ -188,7 +188,15 @@ public class Operator {
         }
     }
 
-    public void gameOver() {
+    public void gameOver(int scoreLeft, int scoreRight) {
+        Platform.runLater(() -> {
+            game.setScoreLeft(scoreLeft);
+            game.setScoreRight(scoreRight);
+        });
+        app.switchScene(app.createGameOverScene(this, game));
+    }
+
+    public void gameEnded() {
         app.switchScene(app.createGameOverScene(this, game));
     }
 

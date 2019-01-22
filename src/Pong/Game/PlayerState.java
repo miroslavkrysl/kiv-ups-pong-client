@@ -2,9 +2,6 @@ package Pong.Game;
 
 import Pong.Game.Exceptions.PlayerStateException;
 import Pong.Game.Types.Direction;
-import Pong.Game.Types.Side;
-import javafx.geometry.Point2D;
-import javafx.scene.canvas.GraphicsContext;
 
 public class PlayerState {
     public static final int SPEED = 400;

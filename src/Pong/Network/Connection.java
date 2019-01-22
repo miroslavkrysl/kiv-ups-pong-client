@@ -1,46 +1,61 @@
 package Pong.Network;
 
-import Pong.App;
-import Pong.Network.Exceptions.*;
+import Pong.Game.BallState;
+import Pong.Game.PlayerState;
+import Pong.Game.Types.Side;
+import Pong.Network.Exceptions.ConnectionException;
+import Pong.Operator;
 import com.sun.istack.internal.NotNull;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
 
 public class Connection implements Runnable {
 
     private static final int SOCKET_TIMEOUT = 3000;
     private static final long INACTIVE_TIMEOUT = 5000;
 
-    private App app;
+    private Operator operator;
     private Socket socket;
     private InetSocketAddress address;
-    private BufferedWriter sender;
+    private PrintWriter sender;
     private BufferedReader receiver;
 
     boolean shouldStop;
-    boolean inactive;
 
-    public Connection(App app, String ip, int port) throws IOException {
-        this.app = app;
+    private BooleanProperty inactive;
+    private BooleanProperty closed;
+
+    public Connection(Operator operator, String ip, int port) throws ConnectionException {
+        this.operator = operator;
         this.address = new InetSocketAddress(ip, port);
 
-        this.socket = new Socket();
-        this.socket.connect(address);
-        this.socket.setSoTimeout(SOCKET_TIMEOUT);
-
-        this.sender = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        this.receiver = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        try {
+            this.socket = new Socket();
+            this.socket.connect(address);
+            this.socket.setSoTimeout(SOCKET_TIMEOUT);
+            this.sender = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+            this.receiver = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        }
+        catch (IOException exception) {
+            throw new ConnectionException("can not create socket for connection");
+        }
 
         this.shouldStop = false;
+        this.inactive = new SimpleBooleanProperty(false);
+        this.closed = new SimpleBooleanProperty(false);
     }
 
-    public void send(@NotNull Packet packet) throws ConnectionClosedException {
+    synchronized public void send(@NotNull Packet packet) {
         if (socket == null) {
-            throw new ConnectionClosedException("can not write to closed connection");
+            return;
         }
 
         sender.write(packet.serialize());
+        sender.flush();
     }
 
     @Override
@@ -66,8 +81,7 @@ public class Connection implements Runnable {
                 long inactiveFor = now - lastActiveAt;
 
                 if (inactiveFor > INACTIVE_TIMEOUT) {
-                    inactive = true;
-                    //TODO: handleInactive;
+                    inactive.set(true);
                 }
 
                 // send poke packet
@@ -76,20 +90,17 @@ public class Connection implements Runnable {
                 continue;
             }
             catch (IOException e) {
-                System.out.println("ERROR: can't read from socket");
-                // TODO: handle disconnected
+                // stream closed
                 break;
             }
 
-            if (bytesRead == 0) {
-                // server disconnected
-                // TODO: handle disconnected
+            if (bytesRead == -1) {
+                // stream closed
                 break;
             }
 
-            if (inactive) {
-                inactive = false;
-                //TODO: handleInactive;
+            if (inactive.get()) {
+                inactive.set(false);
             }
 
             lastActiveAt = System.currentTimeMillis();
@@ -104,19 +115,12 @@ public class Connection implements Runnable {
 
                 data = result[1];
 
-
-                try {
-                    Packet packet = Packet.parse(result[0]);
-                    app.getPacketHandler().handleIncoming(packet);
-                }
-                catch (PacketException exception) {
-                    // TODO
-                }
+                Packet packet = Packet.parse(result[0]);
+                handle(packet);
             }
 
             if (data.length() > Packet.MAX_SIZE) {
-                // corrupted stream
-                // TODO disconnect
+                System.out.println("too long data stream to be a valid packet");
                 break;
             }
         }
@@ -126,6 +130,7 @@ public class Connection implements Runnable {
 
     public void stop() {
         this.shouldStop = true;
+
         try {
             this.socket.shutdownInput();
             this.socket.shutdownOutput();
@@ -134,8 +139,9 @@ public class Connection implements Runnable {
         }
     }
 
-    private void close() {
+    public void close() {
         try {
+            closed.set(true);
             this.sender.close();
             this.receiver.close();
             socket.close();
@@ -149,5 +155,77 @@ public class Connection implements Runnable {
     protected void finalize() throws Throwable {
         super.finalize();
         close();
+    }
+
+    public InetSocketAddress getAddress() {
+        return address;
+    }
+
+    private void handle(Packet packet) {
+        try {
+            switch (packet.getType()) {
+                case "time": {
+                    String[] items = packet.getItems();
+                    long sendTime = Long.parseLong(items[0]);
+                    long serverTime = Long.parseLong(items[1]);
+                    operator.synchronize(sendTime, serverTime);
+                    break;
+                }
+                case "poke":
+                    send(new Packet("poke_back"));
+                    break;
+                case "poke_back":
+                    break;
+                case "not_logged":
+                    operator.notLogged();
+                    break;
+                case "server_full":
+                    operator.notLogged();
+                    break;
+                case "logged":
+                    operator.logged();
+                    break;
+                case "joined":
+                    operator.joinGame(Side.fromString(packet.getItems()[0]));
+                    break;
+                case "opponent_joined":
+                    operator.opponentJoinedGame(packet.getItems()[0]);
+                    break;
+                case "left":
+                    break;
+                case "opponent_left":
+                    operator.opponentLeft();
+                    break;
+                case "your_state":
+                    operator.updateYourState(new PlayerState(packet.getItems()));
+                    break;
+                case "opponent_state":
+                    operator.updateOpponentState(new PlayerState(packet.getItems()));
+                    break;
+                case "opponent_ready":
+                    break;
+                case "ball_hit":
+                    operator.ballHit(new BallState(packet.getItems()));
+                    break;
+                case "new_round":
+                    int scoreLeft = Integer.parseInt(packet.getItems()[0]);
+                    int scoreRight = Integer.parseInt(packet.getItems()[1]);
+                    operator.newRound(scoreLeft, scoreRight);
+                    break;
+                case "ball_released":
+                    operator.ballReleased(new BallState(packet.getItems()));
+                    break;
+                case "game_over":
+                    operator.gameOver();
+                    break;
+                case "game_ended":
+                    operator.gameOver();
+                    break;
+            }
+        }
+        catch (Exception exception) {
+            System.out.println("ERROR: accepting unknown packet");
+            exception.printStackTrace();
+        }
     }
 }

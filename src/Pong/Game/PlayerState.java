@@ -73,6 +73,10 @@ public class PlayerState {
         return x;
     }
 
+    public String[] itemize() {
+        return new String[] {Long.toString(timestamp), Integer.toString(position), direction.toString()};
+    }
+
     public long getTimestamp() {
         return timestamp;
     }

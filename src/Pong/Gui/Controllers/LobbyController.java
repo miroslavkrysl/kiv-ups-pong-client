@@ -1,5 +1,6 @@
 package Pong.Gui.Controllers;
 
+import Pong.Exceptions.OperatorException;
 import Pong.Network.Connection;
 import Pong.Operator;
 import javafx.event.ActionEvent;
@@ -32,7 +33,11 @@ public class LobbyController implements Initializable {
 
     @FXML
     void disconnect(ActionEvent event) {
-        operator.requestDisconnect();
+        try {
+            operator.requestDisconnect();
+        } catch (OperatorException e) {
+            System.out.println("Error while disconnecting");
+        }
     }
 
     private Operator operator;

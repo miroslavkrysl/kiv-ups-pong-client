@@ -1,11 +1,8 @@
 package Pong.Game;
 
 import Pong.Game.Exceptions.BallStateException;
-import Pong.Game.Exceptions.GameTypeException;
 import Pong.Game.Types.GamePhase;
 import Pong.Game.Types.Side;
-import javafx.geometry.Point2D;
-import javafx.scene.canvas.GraphicsContext;
 
 public class BallState {
     public static final int RADIUS = 25;

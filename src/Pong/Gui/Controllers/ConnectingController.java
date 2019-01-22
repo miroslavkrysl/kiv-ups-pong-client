@@ -1,5 +1,6 @@
 package Pong.Gui.Controllers;
 
+import Pong.Exceptions.OperatorException;
 import Pong.Operator;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -12,7 +13,11 @@ public class ConnectingController {
 
     @FXML
     void stop(ActionEvent event) {
-        operator.requestDisconnect();
+        try {
+            operator.requestDisconnect();
+        } catch (OperatorException e) {
+            System.out.println("ERROR while disconnecting");
+        }
     }
 
     private Operator operator;

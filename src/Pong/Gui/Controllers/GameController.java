@@ -53,7 +53,7 @@ public class GameController implements Initializable {
         pressedKeys.add(key);
 
         if (key == KeyCode.SPACE) {
-            game.startRound();
+            game.getOperator().requestReady();
         }
 
         PlayerAction playerAction = game.getOperator().getApp().getControls().getPlayerAction(key);
@@ -113,9 +113,10 @@ public class GameController implements Initializable {
     }
 
     @FXML
-    void restartGame(ActionEvent event) {
-        Platform.runLater(() -> game.getOperator().requestRestartGame());
+    void synchronize(ActionEvent event) {
+        Platform.runLater(() -> game.getOperator().requestSynchronize());
     }
+
 
     private static final int LINE_WIDTH = 10;
     private static final int NET_DASHES_COUNT = 21;
@@ -137,14 +138,20 @@ public class GameController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
 
         // bind texts
-        nicknameLeft.setText(game.getNicknameLeft());
-        nicknameRight.setText(game.getNicknameRight());
+        nicknameLeft.textProperty().bind(game.nicknameLeftProperty());
+        nicknameRight.textProperty().bind(game.nicknameRightProperty());
 
         if (!game.isLocal()) {
+            System.out.println(game.getSide().toString());
             switch (game.getSide()) {
                 case LEFT:
                     nicknameLeft.setTextFill(Color.GREEN);
+                    nicknameRight.setTextFill(Color.RED);
+                    break;
+                case RIGHT:
+                    nicknameRight.setTextFill(Color.GREEN);
                     nicknameLeft.setTextFill(Color.RED);
+                    break;
             }
         }
 

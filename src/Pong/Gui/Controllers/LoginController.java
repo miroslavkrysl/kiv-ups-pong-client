@@ -1,5 +1,8 @@
 package Pong.Gui.Controllers;
 
+import Pong.Exceptions.OperatorException;
+import Pong.Network.Connection;
+import Pong.Network.Exceptions.ConnectionException;
 import Pong.Operator;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
@@ -47,9 +50,37 @@ public class LoginController implements Initializable {
 
     @FXML
     void connect(ActionEvent event) {
-//        try {
-//            operator.connect();
-//        }
+        String nickname = nicknameTF.getText();
+        String ip = ipTF.getText();
+        int port = 0;
+
+        try {
+            port = Integer.parseUnsignedInt(portTF.getText());
+        }
+        catch (NumberFormatException e) {
+            errorMessageNetwork.setVisible(true);
+            errorMessageNetwork.setText("port is invalid");
+            return;
+        }
+
+        if (nickname.length() < Operator.NICKNAME_LENGTH_MIN
+                || nickname.length() > Operator.NICKNAME_LENGTH_MAX) {
+            errorMessageNetwork.setVisible(true);
+            errorMessageNetwork.setText("nickname is in invalid format");
+            return;
+        }
+
+        errorMessageNetwork.setVisible(false);
+        errorMessageNetwork.setText("");
+        errorMessageLocal.setVisible(false);
+        errorMessageLocal.setText("");
+
+        try {
+            operator.requestConnect(ip, port, nickname);
+        } catch (ConnectionException e) {
+            errorMessageNetwork.setVisible(true);
+            errorMessageNetwork.setText("Can't connect to the server");
+        }
     }
 
     @FXML
@@ -68,9 +99,15 @@ public class LoginController implements Initializable {
 
         errorMessageLocal.setVisible(false);
         errorMessageLocal.setText("");
+        errorMessageNetwork.setVisible(false);
+        errorMessageNetwork.setText("");
 
         Platform.runLater(() -> {
-            operator.startLocalGame(leftPlayerNickname, rightPlayerNickname);
+            try {
+                operator.startLocalGame(leftPlayerNickname, rightPlayerNickname);
+            } catch (OperatorException e) {
+                System.out.println("Error while starting local game " + e.toString());
+            }
         });
     }
 

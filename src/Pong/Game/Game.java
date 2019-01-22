@@ -4,12 +4,10 @@ package Pong.Game;
 import Pong.App;
 import Pong.Game.Types.GamePhase;
 import Pong.Game.Types.Side;
+import Pong.Operator;
 import com.sun.istack.internal.NotNull;
 import javafx.animation.AnimationTimer;
-import javafx.beans.property.IntegerProperty;
-import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.SimpleIntegerProperty;
-import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.*;
 
 import java.util.Random;
 
@@ -18,15 +16,15 @@ public class Game {
     public static final int HEIGHT = 1080;
     public static final long START_DELAY = 3000;
 
-    private App app;
+    private Operator operator;
     private Random random;
     private AnimationTimer timer;
 
     private boolean local;
     private Side side;
 
-    private String nicknameLeft;
-    private String nicknameRight;
+    private StringProperty nicknameLeft;
+    private StringProperty nicknameRight;
 
     private IntegerProperty scoreLeft;
     private IntegerProperty scoreRight;
@@ -39,8 +37,8 @@ public class Game {
 
     private ObjectProperty<GamePhase> phase;
 
-    private Game(@NotNull App app) {
-        this.app = app;
+    private Game(@NotNull Operator operator) {
+        this.operator = operator;
         this.serviceSide = Side.LEFT;
         this.phase = new SimpleObjectProperty<>(GamePhase.WAITING);
 
@@ -63,27 +61,33 @@ public class Game {
         timer.start();
     }
 
-    public Game(@NotNull App app, String nicknameLeft, String nicknameRight) {
-        this(app);
-        this.nicknameLeft = nicknameLeft;
-        this.nicknameRight = nicknameRight;
+    public Game(@NotNull Operator operator, String nicknameLeft, String nicknameRight) {
+        this(operator);
+        this.nicknameLeft = new SimpleStringProperty(nicknameLeft);
+        this.nicknameRight = new SimpleStringProperty(nicknameRight);
         this.local = true;
         this.side = Side.LEFT;
     }
 
-    public Game(@NotNull App app, String nickname, String nicknameOpponent, Side side) {
-        this(app);
+    public Game(@NotNull Operator operator, String nickname, String nicknameOpponent, @NotNull Side side) {
+        this(operator);
         this.side = side;
         this.local = false;
 
         if (side == Side.LEFT) {
-            this.nicknameLeft = nickname;
-            this.nicknameRight = nicknameOpponent;
+            this.nicknameLeft = new SimpleStringProperty(nickname);
+            this.nicknameRight = new SimpleStringProperty(nicknameOpponent);
         }
         else {
-            this.nicknameLeft = nicknameOpponent;
-            this.nicknameRight = nickname;
+            this.nicknameLeft = new SimpleStringProperty(nicknameOpponent);
+            this.nicknameRight = new SimpleStringProperty(nickname);
         }
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        super.finalize();
+        this.timer.stop();
     }
 
     public void newRound() {
@@ -102,7 +106,7 @@ public class Game {
     }
 
     private void gameLoop() {
-        long now = app.getTime();
+        long now = operator.getTime();
         GamePhase phase = getPhase();
 
         playerLeft.update(now);
@@ -175,7 +179,7 @@ public class Game {
         this.ball.setState(state);
     }
 
-    public void setPlayerState(PlayerState state, Side left) {
+    public void setPlayerState(PlayerState state, Side side) {
         switch (side) {
             case LEFT:
                 this.playerLeft.setState(state);
@@ -186,8 +190,19 @@ public class Game {
         }
     }
 
+    public void setOpponentNickname(String opponent) {
+        switch (side) {
+            case LEFT:
+                setNicknameRight(opponent);
+                break;
+            case RIGHT:
+                setNicknameLeft(opponent);
+                break;
+        }
+    }
+
     public long getTime() {
-        return app.getTime();
+        return operator.getTime();
     }
 
     public boolean isLocal() {
@@ -196,14 +211,6 @@ public class Game {
 
     public Side getSide() {
         return side;
-    }
-
-    public String getNicknameLeft() {
-        return nicknameLeft;
-    }
-
-    public String getNicknameRight() {
-        return nicknameRight;
     }
 
     public int getScoreLeft() {
@@ -242,7 +249,43 @@ public class Game {
         return phase;
     }
 
-    public App getApp() {
-        return app;
+    public StringProperty nicknameLeftProperty() {
+        return nicknameLeft;
+    }
+
+    public void setNicknameLeft(String nicknameLeft) {
+        this.nicknameLeft.set(nicknameLeft);
+    }
+
+    public StringProperty nicknameRightProperty() {
+        return nicknameRight;
+    }
+
+    public void setNicknameRight(String nicknameRight) {
+        this.nicknameRight.set(nicknameRight);
+    }
+
+    public String getNicknameLeft() {
+        return nicknameLeft.get();
+    }
+
+    public String getNicknameRight() {
+        return nicknameRight.get();
+    }
+
+    public void setScoreLeft(int scoreLeft) {
+        this.scoreLeft.set(scoreLeft);
+    }
+
+    public void setScoreRight(int scoreRight) {
+        this.scoreRight.set(scoreRight);
+    }
+
+    public void setPhase(GamePhase phase) {
+        this.phase.set(phase);
+    }
+
+    public Operator getOperator() {
+        return operator;
     }
 }

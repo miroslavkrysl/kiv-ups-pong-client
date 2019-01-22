@@ -6,10 +6,12 @@ import javafx.beans.property.*;
 public class Player {
 
     private ObjectProperty<PlayerState> state;
+    private BooleanProperty changedFromServer;
 
     private IntegerProperty y;
 
     public Player(long timestamp) {
+        this.changedFromServer = new SimpleBooleanProperty(false);
         this.state = new SimpleObjectProperty<>(new PlayerState(timestamp));
         this.y = new SimpleIntegerProperty(0);
     }
@@ -40,5 +42,17 @@ public class Player {
 
     public IntegerProperty yProperty() {
         return y;
+    }
+
+    public boolean isChangedFromServer() {
+        return changedFromServer.get();
+    }
+
+    public BooleanProperty changedFromServerProperty() {
+        return changedFromServer;
+    }
+
+    public void setChangedFromServer(boolean changedFromServer) {
+        this.changedFromServer.set(changedFromServer);
     }
 }

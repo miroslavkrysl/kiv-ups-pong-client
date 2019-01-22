@@ -11,7 +11,6 @@ import javafx.beans.property.SimpleBooleanProperty;
 
 import java.io.*;
 import java.net.*;
-import java.util.Arrays;
 
 public class Connection implements Runnable {
 
@@ -159,6 +158,22 @@ public class Connection implements Runnable {
 
     public InetSocketAddress getAddress() {
         return address;
+    }
+
+    public boolean isInactive() {
+        return inactive.get();
+    }
+
+    public BooleanProperty inactiveProperty() {
+        return inactive;
+    }
+
+    public boolean isClosed() {
+        return closed.get();
+    }
+
+    public BooleanProperty closedProperty() {
+        return closed;
     }
 
     private void handle(Packet packet) {

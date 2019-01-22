@@ -122,4 +122,8 @@ public class App extends Application{
         super.stop();
         operator.stop();
     }
+
+    public Scene getCurrentScene() {
+        return stage.getScene();
+    }
 }

@@ -13,11 +13,7 @@ public class ConnectingController {
 
     @FXML
     void stop(ActionEvent event) {
-        try {
-            operator.requestDisconnect();
-        } catch (OperatorException e) {
-            System.out.println("ERROR while disconnecting");
-        }
+        operator.requestDisconnect();
     }
 
     private Operator operator;

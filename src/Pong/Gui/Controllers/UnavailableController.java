@@ -13,11 +13,7 @@ public class UnavailableController {
 
     @FXML
     void disconnect(ActionEvent event) {
-        try {
-            operator.requestDisconnect();
-        } catch (OperatorException e) {
-            System.out.println("Error while disconnecting");
-        }
+        operator.requestDisconnect();
     }
 
     private Operator operator;

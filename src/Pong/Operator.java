@@ -14,6 +14,7 @@ import Pong.Network.Packet;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.scene.Scene;
 
 public class Operator {
     public static final int NICKNAME_LENGTH_MIN = 3;
@@ -27,6 +28,7 @@ public class Operator {
 
     private String nickname;
 
+    private Scene lastScene;
     private StringProperty loginErrorMessage;
 
     public Operator(App app) {
@@ -72,6 +74,23 @@ public class Operator {
         Thread thread = new Thread(connection);
         thread.start();
         this.nickname = nickname;
+
+        connection.closedProperty().addListener((observable, oldClosed, newClosed) -> {
+            if (newClosed) {
+                requestDisconnect();
+            }
+        });
+
+        connection.inactiveProperty().addListener((observable, oldInactive, newInactive) -> {
+            if (newInactive) {
+                lastScene = app.getCurrentScene();
+                app.switchScene(app.getUnavailableScene());
+            }
+            else {
+                app.switchScene(lastScene);
+            }
+        });
+
         connection.send(new Packet("login", nickname));
         app.switchScene(app.getConnectingScene());
         requestSynchronize();
@@ -108,12 +127,13 @@ public class Operator {
         app.switchScene(app.createLobyScene(this));
     }
 
-    public void requestDisconnect() throws OperatorException {
+    public void requestDisconnect() {
         if (connection == null) {
-            throw new OperatorException("already disconnected");
+            return;
         }
         connection.close();
         connection = null;
+        game = null;
         app.switchScene(app.getLoginScene());
     }
 

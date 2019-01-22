@@ -1,4 +1,4 @@
-package Pong.Gui.Controllers;
+package Pong.Gui;
 
 import Pong.Exceptions.OperatorException;
 import Pong.Network.Connection;

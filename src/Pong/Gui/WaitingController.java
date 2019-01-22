@@ -1,24 +1,23 @@
-package Pong.Gui.Controllers;
+package Pong.Gui;
 
-import Pong.Exceptions.OperatorException;
 import Pong.Operator;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 
-public class ConnectingController {
+public class WaitingController {
 
     @FXML
     private Button stopButton;
 
     @FXML
     void stop(ActionEvent event) {
-        operator.requestDisconnect();
+        operator.requestLeaveGame();
     }
 
     private Operator operator;
 
-    public ConnectingController(Operator operator) {
+    public WaitingController(Operator operator) {
         this.operator = operator;
     }
 }

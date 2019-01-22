@@ -1,11 +1,9 @@
 package Pong.Game;
 
 
-import Pong.App;
 import Pong.Game.Types.GamePhase;
 import Pong.Game.Types.Side;
 import Pong.Operator;
-import com.sun.istack.internal.NotNull;
 import javafx.animation.AnimationTimer;
 import javafx.beans.property.*;
 
@@ -37,7 +35,7 @@ public class Game {
 
     private ObjectProperty<GamePhase> phase;
 
-    private Game(@NotNull Operator operator) {
+    private Game(Operator operator) {
         this.operator = operator;
         this.serviceSide = Side.LEFT;
         this.phase = new SimpleObjectProperty<>(GamePhase.WAITING);
@@ -61,7 +59,7 @@ public class Game {
         timer.start();
     }
 
-    public Game(@NotNull Operator operator, String nicknameLeft, String nicknameRight) {
+    public Game(Operator operator, String nicknameLeft, String nicknameRight) {
         this(operator);
         this.nicknameLeft = new SimpleStringProperty(nicknameLeft);
         this.nicknameRight = new SimpleStringProperty(nicknameRight);
@@ -69,7 +67,7 @@ public class Game {
         this.side = Side.LEFT;
     }
 
-    public Game(@NotNull Operator operator, String nickname, String nicknameOpponent, @NotNull Side side) {
+    public Game(Operator operator, String nickname, String nicknameOpponent, Side side) {
         this(operator);
         this.side = side;
         this.local = false;

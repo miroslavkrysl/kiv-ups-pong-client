@@ -5,7 +5,6 @@ import Pong.Game.PlayerState;
 import Pong.Game.Types.Side;
 import Pong.Network.Exceptions.ConnectionException;
 import Pong.Operator;
-import com.sun.istack.internal.NotNull;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
@@ -48,7 +47,7 @@ public class Connection implements Runnable {
         this.closed = new SimpleBooleanProperty(false);
     }
 
-    synchronized public void send(@NotNull Packet packet) {
+    synchronized public void send(Packet packet) {
         if (socket == null) {
             return;
         }

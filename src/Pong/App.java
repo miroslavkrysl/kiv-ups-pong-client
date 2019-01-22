@@ -1,9 +1,7 @@
 package Pong;
 
 import Pong.Game.Game;
-import Pong.Gui.Controllers.*;
-import Pong.Gui.Controls;
-import Pong.Gui.SceneType;
+import Pong.Gui.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -15,13 +13,13 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 public class App extends Application{
-    private static final String GAME_TEMPLATE = "Gui/Templates/game.fxml";
-    private static final String GAME_OVER_TEMPLATE = "Gui/Templates/game_over.fxml";
-    private static final String LOGIN_TEMPLATE = "Gui/Templates/login.fxml";
-    private static final String LOBBY_TEMPLATE = "Gui/Templates/lobby.fxml";
-    private static final String WAITING_TEMPLATE = "Gui/Templates/waiting.fxml";
-    private static final String UNAVAILABLE_TEMPLATE = "Gui/Templates/unavailable.fxml";
-    private static final String CONNECTING_TEMPLATE = "Gui/Templates/connecting.fxml";
+    private static final String GAME_TEMPLATE = "templates/game.fxml";
+    private static final String GAME_OVER_TEMPLATE = "templates/game_over.fxml";
+    private static final String LOGIN_TEMPLATE = "templates/login.fxml";
+    private static final String LOBBY_TEMPLATE = "templates/lobby.fxml";
+    private static final String WAITING_TEMPLATE = "templates/waiting.fxml";
+    private static final String UNAVAILABLE_TEMPLATE = "templates/unavailable.fxml";
+    private static final String CONNECTING_TEMPLATE = "templates/connecting.fxml";
     private static final double GAME_SIZE_RATIO = 0.5;
 
     private Operator operator;

@@ -1,6 +1,5 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
-import Pong.Game.Game;
 import Pong.Operator;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;

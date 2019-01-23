@@ -2,13 +2,11 @@ package Pong;
 
 import Pong.Exceptions.OperatorException;
 import Pong.Game.BallState;
-import Pong.Game.Game;
 import Pong.Game.Player;
 import Pong.Game.PlayerState;
 import Pong.Game.Types.GamePhase;
 import Pong.Game.Types.Side;
-import Pong.Gui.SceneType;
-import Pong.Network.Connection;
+import Pong.Networ.Connection;
 import Pong.Network.Exceptions.ConnectionException;
 import Pong.Network.Packet;
 import javafx.application.Platform;
@@ -20,7 +18,7 @@ public class Operator {
     public static final int NICKNAME_LENGTH_MIN = 3;
     public static final int NICKNAME_LENGTH_MAX = 16;
 
-    private App app;
+    private Main app;
     private Game game;
     private Connection connection;
     private long timeDifference;
@@ -31,7 +29,7 @@ public class Operator {
     private Scene lastScene;
     private StringProperty loginErrorMessage;
 
-    public Operator(App app) {
+    public App(Main main) {
         this.app = app;
         this.connection = null;
         this.game = null;
@@ -45,7 +43,7 @@ public class Operator {
         return System.currentTimeMillis() + timeDifference;
     }
 
-    public App getApp() {
+    public Main getApp() {
         return app;
     }
 

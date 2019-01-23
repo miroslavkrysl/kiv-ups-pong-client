@@ -1,54 +1,155 @@
 package Pong.Network;
 
-import Pong.Game.BallState;
-import Pong.Game.PlayerState;
-import Pong.Game.Types.Side;
-import Pong.Network.Exceptions.ConnectionException;
-import Pong.Operator;
+import Pong.App;
+import Pong.Network.Exceptions.*;
 import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 
 import java.io.*;
-import java.net.*;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
 
-public class Connection implements Runnable {
+/**
+ * The class Connection represent a connection to the server.
+ */
+public class Connection {
+
+    enum ConnectingStatus {
+        /**
+         * Pending connecting status.
+         */
+        PENDING,
+        /**
+         * Logged connecting status.
+         */
+        LOGGED,
+        /**
+         * Not logged connecting status.
+         */
+        NOT_LOGGED,
+        /**
+         * Refused connecting status.
+         */
+        REFUSED,
+    }
 
     private static final int SOCKET_TIMEOUT = 3000;
     private static final long INACTIVE_TIMEOUT = 5000;
+    private static final long CONNECTING_WAITING_TIME = 10000;
 
-    private Operator operator;
+    private App app;
+    private PacketHandler packetHandler;
+    private Thread receiveThread;
     private Socket socket;
     private InetSocketAddress address;
     private PrintWriter sender;
     private BufferedReader receiver;
 
-    boolean shouldStop;
-
-    private BooleanProperty inactive;
+    private BooleanProperty unavailable;
     private BooleanProperty closed;
 
-    public Connection(Operator operator, String ip, int port) throws ConnectionException {
-        this.operator = operator;
-        this.address = new InetSocketAddress(ip, port);
+    private ConnectingStatus connectingStatus;
 
-        try {
-            this.socket = new Socket();
-            this.socket.connect(address);
-            this.socket.setSoTimeout(SOCKET_TIMEOUT);
-            this.sender = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
-            this.receiver = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        }
-        catch (IOException exception) {
-            throw new ConnectionException("can not create socket for connection");
-        }
+    private long timeDifference;
+    private long latency;
 
-        this.shouldStop = false;
-        this.inactive = new SimpleBooleanProperty(false);
-        this.closed = new SimpleBooleanProperty(false);
+    /**
+     * Instantiates a new Connection.
+     *
+     * @param app the app instance
+     */
+    public Connection(App app) {
+        this.app = app;
+        this.packetHandler = new PacketHandler(app, this);
+        this.receiveThread = null;
+        this.address = null;
+        this.socket = null;
+        this.unavailable = new SimpleBooleanProperty(false);
+        this.closed = new SimpleBooleanProperty(true);
+
+        this.timeDifference = 0;
+        this.latency = 0;
     }
 
+    /**
+     * Creates a new socket for the connection, runs the receiving thread, send the login packet
+     * and waits for the logged packet response.
+     * It may takes a while because of sending a couple of time synchronization packets.
+     *
+     * @param address  the address
+     * @param nickname the nickname
+     */
+    synchronized public void connect(InetSocketAddress address, String nickname) throws ConnectionException {
+        if (socket != null) {
+            close();
+        }
+        try {
+            Socket socket = new Socket();
+            socket.connect(address);
+            socket.setSoTimeout(SOCKET_TIMEOUT);
+            PrintWriter sender = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+            BufferedReader receiver = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+
+            this.address = address;
+            this.socket = socket;
+            this.sender = sender;
+            this.receiver = receiver;
+        }
+        catch (IOException exception) {
+            throw new CantConnectException("can not create socket for connection");
+        }
+
+        this.receiveThread = new Thread(this::receive);
+        this.receiveThread.start();
+
+        connectingStatus = ConnectingStatus.PENDING;
+        send(new Packet("login", nickname));
+
+        while (connectingStatus == ConnectingStatus.PENDING) {
+            try {
+                wait(CONNECTING_WAITING_TIME);
+            } catch (InterruptedException e) {
+                continue;
+            }
+
+            if (connectingStatus == ConnectingStatus.LOGGED) {
+                break;
+            }
+
+            if (connectingStatus == ConnectingStatus.NOT_LOGGED) {
+                close();
+                throw new BadNicknameException("connecting is taking too much time");
+            }
+
+            if (connectingStatus == ConnectingStatus.REFUSED) {
+                close();
+                throw new ConnectingRefusedException("connecting is taking too much time");
+            }
+
+            close();
+            throw new ConnectingTimeoutException("connecting is taking too much time");
+        }
+
+        for (int i = 0; i < 10; i++) {
+            send(new Packet("time", Long.toString(System.currentTimeMillis())));
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                // nothing to do
+            }
+        }
+    }
+
+    /**
+     * Send the packet to the server.
+     *
+     * @param packet the packet
+     */
     synchronized public void send(Packet packet) {
         if (socket == null) {
+            System.out.println("can not send data to the closed connection");
             return;
         }
 
@@ -56,17 +157,38 @@ public class Connection implements Runnable {
         sender.flush();
     }
 
-    @Override
-    public void run() {
-        if (socket == null) {
-            return;
+    /**
+     * Disconnect the connection.
+     */
+    public void close() {
+        try {
+            this.socket.shutdownInput();
+            this.socket.shutdownOutput();
+            this.sender.close();
+            this.receiver.close();
+            socket.close();
+            closed.set(true);
+        }
+        catch (IOException exception) {
+            // already closed
         }
 
+        socket = null;
+        address = null;
+        sender = null;
+        receiver = null;
+    }
+
+    /**
+     * Constantly receives packets from the server, passes them to the packet handler
+     * and updates the connection state.
+     */
+    private void receive() {
         long lastActiveAt = System.currentTimeMillis();
         char[] buffer = new char[1024];
         String data = "";
 
-        while (!shouldStop) {
+        while (socket != null) {
 
             int bytesRead;
 
@@ -79,7 +201,7 @@ public class Connection implements Runnable {
                 long inactiveFor = now - lastActiveAt;
 
                 if (inactiveFor > INACTIVE_TIMEOUT) {
-                    inactive.set(true);
+                    unavailable.set(true);
                 }
 
                 // send poke packet
@@ -97,8 +219,8 @@ public class Connection implements Runnable {
                 break;
             }
 
-            if (inactive.get()) {
-                inactive.set(false);
+            if (isUnavailable()) {
+                unavailable.set(false);
             }
 
             lastActiveAt = System.currentTimeMillis();
@@ -114,7 +236,7 @@ public class Connection implements Runnable {
                 data = result[1];
 
                 Packet packet = Packet.parse(result[0]);
-                handle(packet);
+                packetHandler.handle(packet);
             }
 
             if (data.length() > Packet.MAX_SIZE) {
@@ -126,122 +248,81 @@ public class Connection implements Runnable {
         close();
     }
 
-    public void stop() {
-        this.shouldStop = true;
 
-        try {
-            this.socket.shutdownInput();
-            this.socket.shutdownOutput();
-        } catch (IOException e) {
-            // already closed
-        }
+    /**
+     * Sets the connection connecting status.
+     *
+     * @param status the status
+     */
+    synchronized void setConnectingStatus(ConnectingStatus status) {
+        this.connectingStatus = status;
+        notifyAll();
     }
 
-    public void close() {
-        try {
-            closed.set(true);
-            this.sender.close();
-            this.receiver.close();
-            socket.close();
-        }
-        catch (IOException exception) {
-            // already closed
-        }
+    /**
+     * Gets the current server time.
+     *
+     * @return the time
+     */
+    public long getTime() {
+        return System.currentTimeMillis() + timeDifference;
     }
 
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        close();
+    /**
+     * Updates the current server time.
+     *
+     * @param sendTime   the send time
+     * @param serverTime the server time
+     */
+    public void updateTime(long sendTime, long serverTime) {
+        long now = System.currentTimeMillis();
+
+        this.latency = (3 * latency + (now - sendTime)) / 4;
+        this.timeDifference = (serverTime - sendTime) + (latency / 2);
     }
 
+    /**
+     * Gets the connection address.
+     *
+     * @return the address
+     */
     public InetSocketAddress getAddress() {
         return address;
     }
 
-    public boolean isInactive() {
-        return inactive.get();
+    /**
+     * Is unavailable boolean.
+     *
+     * @return the boolean
+     */
+    public boolean isUnavailable() {
+        return unavailable.get();
     }
 
-    public BooleanProperty inactiveProperty() {
-        return inactive;
+    /**
+     * Unavailable property read only boolean property.
+     *
+     * @return the read only boolean property
+     */
+    public ReadOnlyBooleanProperty unavailableProperty() {
+        return unavailable;
     }
 
+    /**
+     * Is closed boolean.
+     *
+     * @return the boolean
+     */
     public boolean isClosed() {
         return closed.get();
     }
 
-    public BooleanProperty closedProperty() {
+    /**
+     * Closed property read only boolean property.
+     *
+     * @return the read only boolean property
+     */
+    public ReadOnlyBooleanProperty closedProperty() {
         return closed;
-    }
-
-    private void handle(Packet packet) {
-        try {
-            switch (packet.getType()) {
-                case "time": {
-                    String[] items = packet.getItems();
-                    long sendTime = Long.parseLong(items[0]);
-                    long serverTime = Long.parseLong(items[1]);
-                    operator.synchronize(sendTime, serverTime);
-                    break;
-                }
-                case "poke":
-                    send(new Packet("poke_back"));
-                    break;
-                case "poke_back":
-                    break;
-                case "not_logged":
-                    operator.notLogged();
-                    break;
-                case "server_full":
-                    operator.notLogged();
-                    break;
-                case "logged":
-                    operator.logged();
-                    break;
-                case "joined":
-                    operator.joinGame(Side.fromString(packet.getItems()[0]));
-                    break;
-                case "opponent_joined":
-                    operator.opponentJoinedGame(packet.getItems()[0]);
-                    break;
-                case "left":
-                    break;
-                case "opponent_left":
-                    operator.opponentLeft();
-                    break;
-                case "your_state":
-                    operator.updateYourState(new PlayerState(packet.getItems()));
-                    break;
-                case "opponent_state":
-                    operator.updateOpponentState(new PlayerState(packet.getItems()));
-                    break;
-                case "opponent_ready":
-                    break;
-                case "ball_hit":
-                    operator.ballHit(new BallState(packet.getItems()));
-                    break;
-                case "new_round":
-                    int scoreLeft = Integer.parseInt(packet.getItems()[0]);
-                    int scoreRight = Integer.parseInt(packet.getItems()[1]);
-                    operator.newRound(scoreLeft, scoreRight);
-                    break;
-                case "ball_released":
-                    operator.ballReleased(new BallState(packet.getItems()));
-                    break;
-                case "game_over":
-                    int sL = Integer.parseInt(packet.getItems()[0]);
-                    int sR = Integer.parseInt(packet.getItems()[1]);
-                    operator.gameOver(sL, sR);
-                    break;
-                case "game_ended":
-                    operator.gameEnded();
-                    break;
-            }
-        }
-        catch (Exception exception) {
-            System.out.println("ERROR: accepting unknown packet");
-            exception.printStackTrace();
-        }
     }
 }

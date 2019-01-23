@@ -1,4 +1,4 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
 import Pong.Operator;
 import javafx.event.ActionEvent;

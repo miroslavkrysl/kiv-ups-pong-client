@@ -1,4 +1,4 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
 import Pong.Game.Types.Action;
 import Pong.Game.Types.Side;

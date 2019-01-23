@@ -1,10 +1,9 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
-import Pong.Game.*;
 import Pong.Game.Types.Action;
 import Pong.Game.Types.Direction;
-import Pong.Gui.Controls;
-import Pong.Gui.PlayerAction;
+import Pong.Game.BallState;
+import Pong.Game.PlayerState;
 import javafx.application.Platform;
 import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.DoubleProperty;

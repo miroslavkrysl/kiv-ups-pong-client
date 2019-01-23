@@ -1,4 +1,4 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
 public enum SceneType {
     LOGIN,

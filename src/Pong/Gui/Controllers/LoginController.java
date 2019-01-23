@@ -1,7 +1,6 @@
-package Pong.Gui;
+package Pong.Gui.Controllers;
 
 import Pong.Exceptions.OperatorException;
-import Pong.Network.Connection;
 import Pong.Network.Exceptions.ConnectionException;
 import Pong.Operator;
 import javafx.application.Platform;

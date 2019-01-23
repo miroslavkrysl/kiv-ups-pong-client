@@ -1,4 +1,4 @@
-package Pong.Gui.Controllers;
+package Pong.Gui;
 
 import Pong.Game.Types.Action;
 import Pong.Game.Types.Side;
@@ -14,8 +14,10 @@ public class PlayerAction {
 
         playerActions.get(Side.LEFT).put(Action.UP, new PlayerAction(Side.LEFT, Action.UP));
         playerActions.get(Side.LEFT).put(Action.DOWN, new PlayerAction(Side.LEFT, Action.DOWN));
+        playerActions.get(Side.LEFT).put(Action.READY, new PlayerAction(Side.LEFT, Action.READY));
         playerActions.get(Side.RIGHT).put(Action.UP, new PlayerAction(Side.RIGHT, Action.UP));
         playerActions.get(Side.RIGHT).put(Action.DOWN, new PlayerAction(Side.RIGHT, Action.DOWN));
+        playerActions.get(Side.RIGHT).put(Action.READY, new PlayerAction(Side.RIGHT, Action.READY));
     }
 
     public final Side side;

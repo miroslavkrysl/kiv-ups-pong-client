@@ -37,7 +37,7 @@ public class Connection {
 
     private static final int SOCKET_TIMEOUT = 3000;
     private static final long INACTIVE_TIMEOUT = 5000;
-    private static final long CONNECTING_WAITING_TIME = 10000;
+    private static final long CONNECTING_WAITING_TIME = 5000;
 
     private App app;
     private PacketHandler packetHandler;
@@ -51,6 +51,7 @@ public class Connection {
     private BooleanProperty closed;
 
     private ConnectingStatus connectingStatus;
+    private boolean closedByServer;
 
     private long timeDifference;
     private long latency;
@@ -68,6 +69,7 @@ public class Connection {
         this.socket = null;
         this.unavailable = new SimpleBooleanProperty(false);
         this.closed = new SimpleBooleanProperty(true);
+        this.closedByServer = false;
 
         this.timeDifference = 0;
         this.latency = 0;
@@ -87,7 +89,7 @@ public class Connection {
         }
         try {
             Socket socket = new Socket();
-            socket.connect(address);
+            socket.connect(address, SOCKET_TIMEOUT);
             socket.setSoTimeout(SOCKET_TIMEOUT);
             PrintWriter sender = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
             BufferedReader receiver = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -98,10 +100,11 @@ public class Connection {
             this.receiver = receiver;
         }
         catch (IOException exception) {
-            throw new CantConnectException("can not create socket for connection");
+            throw new CantConnectException("can not create socket for the connection");
         }
 
         this.receiveThread = new Thread(this::receive);
+        this.receiveThread.setDaemon(false);
         this.receiveThread.start();
 
         connectingStatus = ConnectingStatus.PENDING;
@@ -110,7 +113,8 @@ public class Connection {
         while (connectingStatus == ConnectingStatus.PENDING) {
             try {
                 wait(CONNECTING_WAITING_TIME);
-            } catch (InterruptedException e) {
+            }
+            catch (InterruptedException e) {
                 continue;
             }
 
@@ -160,23 +164,44 @@ public class Connection {
     /**
      * Disconnect the connection.
      */
-    public void close() {
+    synchronized private void close() {
+        if (socket == null) {
+            return;
+        }
+
         try {
-            this.socket.shutdownInput();
-            this.socket.shutdownOutput();
             this.sender.close();
             this.receiver.close();
             socket.close();
-            closed.set(true);
         }
         catch (IOException exception) {
             // already closed
         }
 
+        closed.set(true);
         socket = null;
         address = null;
         sender = null;
         receiver = null;
+        receiveThread = null;
+    }
+
+    /**
+     * Stop the connection from receiving and close it.
+     */
+    synchronized public void stop() {
+        if (socket == null) {
+            return;
+        }
+
+        try {
+            socket.shutdownInput();
+            socket.shutdownOutput();
+            this.closedByServer = false;
+        }
+        catch (IOException exception) {
+            // already closed
+        }
     }
 
     /**
@@ -184,6 +209,9 @@ public class Connection {
      * and updates the connection state.
      */
     private void receive() {
+        this.closedByServer = true;
+        closed.set(false);
+
         long lastActiveAt = System.currentTimeMillis();
         char[] buffer = new char[1024];
         String data = "";
@@ -324,5 +352,15 @@ public class Connection {
      */
     public ReadOnlyBooleanProperty closedProperty() {
         return closed;
+    }
+
+
+    /**
+     * Check whether the connection is closed by the server.
+     *
+     * @return the boolean
+     */
+    public boolean isClosedByServer() {
+        return closedByServer;
     }
 }

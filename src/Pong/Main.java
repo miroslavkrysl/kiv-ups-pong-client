@@ -1,6 +1,9 @@
 package Pong;
 
+import Pong.Game.Game;
 import Pong.Gui.Controllers.*;
+import Pong.Gui.Controls;
+import Pong.Network.Connection;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -12,23 +15,24 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 public class Main extends Application{
-    private static final String GAME_TEMPLATE = "templates/game.fxml";
-    private static final String GAME_OVER_TEMPLATE = "templates/game_over.fxml";
-    private static final String LOGIN_TEMPLATE = "templates/login.fxml";
-    private static final String LOBBY_TEMPLATE = "templates/lobby.fxml";
-    private static final String WAITING_TEMPLATE = "templates/waiting.fxml";
-    private static final String UNAVAILABLE_TEMPLATE = "templates/unavailable.fxml";
-    private static final String CONNECTING_TEMPLATE = "templates/connecting.fxml";
+    private static final String GAME_TEMPLATE = "Gui/templates/game.fxml";
+    private static final String GAME_OVER_TEMPLATE = "Gui/templates/game_over.fxml";
+    private static final String LOGIN_TEMPLATE = "Gui/templates/login.fxml";
+    private static final String LOBBY_TEMPLATE = "Gui/templates/lobby.fxml";
+    private static final String WAITING_TEMPLATE = "Gui/templates/waiting.fxml";
+    private static final String UNAVAILABLE_TEMPLATE = "Gui/templates/unavailable.fxml";
+
     private static final double GAME_SIZE_RATIO = 0.5;
 
-    private Operator operator;
+    private App app;
     private Controls controls;
     private Stage stage;
 
     private Scene loginScene;
     private Scene waitingScene;
     private Scene unavailableScene;
-    private Scene connectingScene;
+
+    private LoginController loginController;
 
     public static void main(String[] args) {
         launch(args);
@@ -37,14 +41,14 @@ public class Main extends Application{
     @Override
     public void init() throws Exception {
         super.init();
-        controls = new Controls();
-        operator = new Operator(this);
+        this.controls = new Controls();
+        this.app = new App(this);
 
         // setup scenes
-        this.loginScene = createScene(new LoginController(operator), LOGIN_TEMPLATE);
-        this.waitingScene = createScene(new WaitingController(operator), WAITING_TEMPLATE);
-        this.unavailableScene = createScene(new UnavailableController(operator), UNAVAILABLE_TEMPLATE);
-        this.connectingScene = createScene(new ConnectingController(operator), CONNECTING_TEMPLATE);
+        this.loginController = new LoginController(app);
+        this.loginScene = createScene(loginController, LOGIN_TEMPLATE);
+        this.unavailableScene = createScene(new UnavailableController(app), UNAVAILABLE_TEMPLATE);
+        this.waitingScene = createScene(new WaitingController(app), WAITING_TEMPLATE);
     }
 
     @Override
@@ -66,24 +70,27 @@ public class Main extends Application{
         Platform.runLater(() -> {
             stage.setScene(scene);
             scene.getRoot().requestFocus();
-            centerStage();
         });
     }
 
+    public Scene createLobbyScene(App app, Connection connection) {
+        return createScene(new LobbyController(app, connection), LOBBY_TEMPLATE);
+    }
+
     public Scene createGameScene(Game game) {
-        return createScene(new GameController(game, GAME_SIZE_RATIO), GAME_TEMPLATE);
+        return createScene(new GameController(app, controls, game, GAME_SIZE_RATIO), GAME_TEMPLATE);
     }
 
-    public Scene createGameOverScene(Operator operator, Game game) {
-        return createScene(new GameOverController(operator, game), GAME_OVER_TEMPLATE);
-    }
-
-    public Scene createLobyScene(Operator operator) {
-        return createScene(new LobbyController(operator), LOBBY_TEMPLATE);
+    public Scene createGameOverScene(App app, Game game, String message) {
+        return createScene(new GameOverController(app, game, message), GAME_OVER_TEMPLATE);
     }
 
     public Scene getLoginScene() {
         return loginScene;
+    }
+
+    public LoginController getLoginController() {
+        return loginController;
     }
 
     public Scene getWaitingScene() {
@@ -92,6 +99,10 @@ public class Main extends Application{
 
     public Scene getUnavailableScene() {
         return unavailableScene;
+    }
+
+    public Scene getCurrentScene() {
+        return stage.getScene();
     }
 
     private Scene createScene(Object controller, String rootPath) {
@@ -106,21 +117,9 @@ public class Main extends Application{
         return null;
     }
 
-    public Controls getControls() {
-        return controls;
-    }
-
-    public Scene getConnectingScene() {
-        return connectingScene;
-    }
-
     @Override
     public void stop() throws Exception {
         super.stop();
-        operator.stop();
-    }
-
-    public Scene getCurrentScene() {
-        return stage.getScene();
+        app.getConnection().stop();
     }
 }

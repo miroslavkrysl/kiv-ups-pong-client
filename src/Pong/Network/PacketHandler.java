@@ -2,8 +2,12 @@ package Pong.Network;
 
 import Pong.App;
 import Pong.Game.BallState;
+import Pong.Game.Exceptions.BallStateException;
+import Pong.Game.Exceptions.GameTypeException;
+import Pong.Game.Exceptions.PlayerStateException;
 import Pong.Game.PlayerState;
 import Pong.Game.Types.Side;
+import Pong.Network.Exceptions.MalformedPacketException;
 
 public class PacketHandler {
 
@@ -42,7 +46,7 @@ public class PacketHandler {
                     break;
                 case "joined":
                     packet.validateItemsCount(1);
-                    app.joined(Side.fromString(packet.getItems()[0]));
+                    app.joinedGame(Side.fromString(packet.getItems()[0]));
                     break;
                 case "opponent_joined":
                     app.opponentJoinedGame(packet.getItems()[0]);
@@ -54,15 +58,15 @@ public class PacketHandler {
                     break;
                 case "your_state":
                     packet.validateItemsCount(PlayerState.ITEMS_COUNT);
-                    app.updateLocalState(new PlayerState(packet.getItems()));
+                    app.updateYourState(new PlayerState(packet.getItems()));
                     break;
                 case "opponent_state":
                     packet.validateItemsCount(PlayerState.ITEMS_COUNT);
                     app.updateOpponentState(new PlayerState(packet.getItems()));
                     break;
-                case "opponent_ready":
-                    app.opponentReady();
-                    break;
+//                case "opponent_ready":
+//                    app.opponentReady();
+//                    break;
                 case "ball_hit":
                     packet.validateItemsCount(BallState.ITEMS_COUNT);
                     app.ballHit(new BallState(packet.getItems()));
@@ -86,7 +90,11 @@ public class PacketHandler {
                 case "game_ended":
                     app.gameEnded();
                     break;
+                default:
+                    break;
             }
+        } catch (Exception e) {
+            System.out.println("ERROR while processing packet");
         }
     }
 }

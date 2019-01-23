@@ -1,7 +1,6 @@
 package Pong.Gui.Controllers;
 
-import Pong.Exceptions.OperatorException;
-import Pong.Operator;
+import Pong.App;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -13,13 +12,13 @@ public class UnavailableController {
 
     @FXML
     void disconnect(ActionEvent event) {
-        operator.requestDisconnect();
+        app.disconnect();
     }
 
-    private Operator operator;
+    private App app;
 
-    public UnavailableController(Operator operator) {
-        this.operator = operator;
+    public UnavailableController(App app) {
+        this.app = app;
     }
 }
 

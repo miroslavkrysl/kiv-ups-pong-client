@@ -1,10 +1,12 @@
 package Pong.Gui.Controllers;
 
+import Pong.App;
+import Pong.Game.*;
 import Pong.Game.Types.Action;
 import Pong.Game.Types.Direction;
-import Pong.Game.BallState;
-import Pong.Game.PlayerState;
-import javafx.application.Platform;
+import Pong.Game.Types.Side;
+import Pong.Gui.Controls;
+import Pong.Gui.PlayerAction;
 import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -25,6 +27,9 @@ import java.util.HashSet;
 import java.util.ResourceBundle;
 import java.util.Set;
 
+/**
+ * The type Game controller.
+ */
 public class GameController implements Initializable {
 
     @FXML
@@ -42,6 +47,11 @@ public class GameController implements Initializable {
     @FXML
     private Pane field;
 
+    /**
+     * Key pressed handler. Process user keyboard actions.
+     *
+     * @param event the key event
+     */
     @FXML
     public void keyPressed(KeyEvent event) {
         KeyCode key = event.getCode();
@@ -51,17 +61,24 @@ public class GameController implements Initializable {
         }
         pressedKeys.add(key);
 
-        if (key == KeyCode.SPACE) {
-            game.getOperator().requestReady();
-        }
-
-        PlayerAction playerAction = game.getOperator().getApp().getControls().getPlayerAction(key);
+        PlayerAction playerAction = controls.getPlayerAction(key);
 
         if (playerAction == null) {
             return;
         }
 
-        if (!game.isLocal() && playerAction.side != game.getSide()) {
+
+        if (playerAction.action == Action.READY) {
+            if (isNetworkGame) {
+                ((NetworkGame)game).playerReady(((NetworkGame) game).getLocalPlayerSide());
+            }
+            else {
+                game.startRound();
+            }
+            return;
+        }
+
+        if (isNetworkGame && playerAction.side != ((NetworkGame)game).getLocalPlayerSide()) {
             return;
         }
 
@@ -79,13 +96,17 @@ public class GameController implements Initializable {
         game.getPlayer(playerAction.side).changeDirection(game.getTime(), direction);
     }
 
+    /**
+     * Key released handler. Processed user keyboard actions.
+     *
+     * @param event the key event
+     */
     @FXML
     public void keyReleased(KeyEvent event) {
         KeyCode key = event.getCode();
 
         pressedKeys.remove(key);
 
-        Controls controls = game.getOperator().getApp().getControls();
         PlayerAction playerAction = controls.getPlayerAction(key);
 
         if (playerAction == null) {
@@ -106,43 +127,57 @@ public class GameController implements Initializable {
         game.getPlayer(playerAction.side).changeDirection(game.getTime(), Direction.STOP);
     }
 
+    /**
+     * Call apps leave game method.
+     *
+     * @param event the event
+     */
     @FXML
     void leaveGame(ActionEvent event) {
-        Platform.runLater(() -> game.getOperator().requestLeaveGame());
+        app.leaveGame();
     }
-
-    @FXML
-    void synchronize(ActionEvent event) {
-        Platform.runLater(() -> game.getOperator().requestSynchronize());
-    }
-
 
     private static final int LINE_WIDTH = 10;
     private static final int NET_DASHES_COUNT = 21;
 
-    private DoubleProperty ratio;
+    private App app;
+    private Controls controls;
     private Game game;
+    private DoubleProperty ratio;
+
+    private boolean isNetworkGame;
 
     private Set<KeyCode> pressedKeys;
     private Set<Action> activeActions;
 
-    public GameController(Game game, double ratio) {
+    /**
+     * Instantiates a new GameController.
+     *
+     * @param app      the app
+     * @param controls the controls
+     * @param game     the game
+     * @param ratio    the ratio
+     */
+    public GameController(App app, Controls controls, Game game, double ratio) {
+        this.app = app;
+        this.controls = controls;
         this.game = game;
         this.ratio = new SimpleDoubleProperty(ratio);
         this.pressedKeys = Collections.synchronizedSet(new HashSet<>());
         this.activeActions = Collections.synchronizedSet(new HashSet<>());
+
+        isNetworkGame = game.getClass() == NetworkGame.class;
     }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
 
         // bind texts
-        nicknameLeft.textProperty().bind(game.nicknameLeftProperty());
-        nicknameRight.textProperty().bind(game.nicknameRightProperty());
+        nicknameLeft.textProperty().bind(game.nicknameProperty(Side.LEFT));
+        nicknameRight.textProperty().bind(game.nicknameProperty(Side.RIGHT));
 
-        if (!game.isLocal()) {
-            System.out.println(game.getSide().toString());
-            switch (game.getSide()) {
+        if (isNetworkGame) {
+            switch (((NetworkGame)game).getLocalPlayerSide()) {
                 case LEFT:
                     nicknameLeft.setTextFill(Color.GREEN);
                     nicknameRight.setTextFill(Color.RED);
@@ -154,8 +189,8 @@ public class GameController implements Initializable {
             }
         }
 
-        scoreLeft.textProperty().bind(game.scoreLeftProperty().asString());
-        scoreRight.textProperty().bind(game.scoreRightProperty().asString());
+        scoreLeft.textProperty().bind(game.scoreProperty(Side.LEFT).asString());
+        scoreRight.textProperty().bind(game.scoreProperty(Side.RIGHT).asString());
 
 
         // bind game field
@@ -178,7 +213,7 @@ public class GameController implements Initializable {
 
         Rectangle playerLeft = createPlayerRectangle();
         playerLeft.layoutXProperty().bind(ratio.multiply(center.getX() - PlayerState.WIDTH));
-        playerLeft.layoutYProperty().bind(game.getPlayerLeft()
+        playerLeft.layoutYProperty().bind(game.getPlayer(Side.LEFT)
                 .yProperty()
                 .multiply(-1)
                 .add(center.getY())
@@ -188,7 +223,7 @@ public class GameController implements Initializable {
 
         Rectangle playerRight = createPlayerRectangle();
         playerRight.layoutXProperty().bind(ratio.multiply(center.getX() + Game.WIDTH));
-        playerRight.layoutYProperty().bind(game.getPlayerRight()
+        playerRight.layoutYProperty().bind(game.getPlayer(Side.RIGHT)
                 .yProperty()
                 .multiply(-1)
                 .add(center.getY())

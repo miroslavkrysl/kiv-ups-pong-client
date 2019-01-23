@@ -1,6 +1,6 @@
 package Pong.Gui.Controllers;
 
-import Pong.Operator;
+import Pong.App;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -12,13 +12,13 @@ public class WaitingController {
 
     @FXML
     void stop(ActionEvent event) {
-        operator.requestLeaveGame();
+        app.leaveGame();
     }
 
-    private Operator operator;
+    private App app;
 
-    public WaitingController(Operator operator) {
-        this.operator = operator;
+    public WaitingController(App app) {
+        this.app = app;
     }
 }
 

@@ -1,4 +1,4 @@
-package Pong.Gui.Controllers;
+package Pong.Gui;
 
 import Pong.Game.Types.Action;
 import Pong.Game.Types.Side;
@@ -19,8 +19,10 @@ public class Controls {
     public void setDefault() {
         add(KeyCode.W, PlayerAction.get(Side.LEFT, Action.UP));
         add(KeyCode.S, PlayerAction.get(Side.LEFT, Action.DOWN));
+        add(KeyCode.SPACE, PlayerAction.get(Side.LEFT, Action.READY));
         add(KeyCode.O, PlayerAction.get(Side.RIGHT, Action.UP));
         add(KeyCode.K, PlayerAction.get(Side.RIGHT, Action.DOWN));
+        add(KeyCode.SPACE, PlayerAction.get(Side.RIGHT, Action.READY));
     }
 
     private void add(KeyCode keyCode, PlayerAction playerAction) {

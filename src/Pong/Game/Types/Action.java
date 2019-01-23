@@ -11,5 +11,9 @@ public enum Action {
     /**
      * Player moves down.
      */
-    DOWN
+    DOWN,
+    /**
+     * Player is ready.
+     */
+    READY
 }

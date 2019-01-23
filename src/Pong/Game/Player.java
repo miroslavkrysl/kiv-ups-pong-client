@@ -39,7 +39,7 @@ public class Player {
      * @param direction the direction
      */
     public void changeDirection(long timestamp, Direction direction) {
-        state.set(new PlayerState(timestamp, (int) state.get().getPositionAt(timestamp), direction));
+        setState(new PlayerState(timestamp, (int) state.get().getPositionAt(timestamp), direction), false);
     }
 
     /**
@@ -58,7 +58,7 @@ public class Player {
      * @param causedByServer true, if the change was initiated from the server
      */
     public void setState(PlayerState state, boolean causedByServer) {
-        this.changedFromServer.set(true);
+        this.changedFromServer.set(causedByServer);
         this.state.set(state);
     }
 

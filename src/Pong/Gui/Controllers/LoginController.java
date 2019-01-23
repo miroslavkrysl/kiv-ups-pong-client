@@ -1,9 +1,8 @@
 package Pong.Gui.Controllers;
 
-import Pong.Exceptions.OperatorException;
-import Pong.Network.Exceptions.ConnectionException;
-import Pong.Operator;
+import Pong.App;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -15,6 +14,9 @@ import javafx.scene.control.TextField;
 import java.net.URL;
 import java.util.ResourceBundle;
 
+/**
+ * The type Login controller.
+ */
 public class LoginController implements Initializable {
 
     @FXML
@@ -47,6 +49,11 @@ public class LoginController implements Initializable {
     @FXML
     private Button playButton;
 
+    /**
+     * Connect.
+     *
+     * @param event the event
+     */
     @FXML
     void connect(ActionEvent event) {
         String nickname = nicknameTF.getText();
@@ -57,63 +64,67 @@ public class LoginController implements Initializable {
             port = Integer.parseUnsignedInt(portTF.getText());
         }
         catch (NumberFormatException e) {
-            errorMessageNetwork.setVisible(true);
-            errorMessageNetwork.setText("port is invalid");
+            setErrorMessage("Port is invalid", true);
             return;
         }
 
-        if (nickname.length() < Operator.NICKNAME_LENGTH_MIN
-                || nickname.length() > Operator.NICKNAME_LENGTH_MAX) {
-            errorMessageNetwork.setVisible(true);
-            errorMessageNetwork.setText("nickname is in invalid format");
+        if (!nickname.matches("[a-zA-Z0-9]{3,16}")) {
+            setErrorMessage("Nickname is in invalid format", true);
             return;
         }
 
-        errorMessageNetwork.setVisible(false);
-        errorMessageNetwork.setText("");
-        errorMessageLocal.setVisible(false);
-        errorMessageLocal.setText("");
+        setErrorMessage(null, null);
 
-        try {
-            operator.requestConnect(ip, port, nickname);
-        } catch (ConnectionException e) {
-            errorMessageNetwork.setVisible(true);
-            errorMessageNetwork.setText("Can't connect to the server");
-        }
+        int finalPort = port;
+
+        connectButton.setDisable(true);
+        playButton.setDisable(true);
+        progressIndicator.setVisible(true);
+
+        Task connectTask = new Task() {
+            @Override
+            protected Object call() throws Exception {
+                app.connect(ip, finalPort, nickname);
+
+                progressIndicator.setVisible(false);
+                connectButton.setDisable(false);
+                playButton.setDisable(false);
+                return null;
+            }
+        };
+
+        Thread connectThread = new Thread(connectTask);
+        connectThread.start();
     }
 
+    /**
+     * Start local.
+     *
+     * @param event the event
+     */
     @FXML
     void startLocal(ActionEvent event) {
         String leftPlayerNickname = leftPlayerTF.getText();
         String rightPlayerNickname = rightPlayerTF.getText();
 
-        if (leftPlayerNickname.length() < Operator.NICKNAME_LENGTH_MIN
-                || leftPlayerNickname.length() > Operator.NICKNAME_LENGTH_MAX
-                || rightPlayerNickname.length() < Operator.NICKNAME_LENGTH_MIN
-                || rightPlayerNickname.length() > Operator.NICKNAME_LENGTH_MAX) {
-            errorMessageLocal.setVisible(true);
-            errorMessageLocal.setText("nickname is in invalid format");
+        if (!leftPlayerNickname.matches("[a-zA-Z0-9]{3,16}")
+                || !rightPlayerNickname.matches("[a-zA-Z0-9]{3,16}")) {
+            setErrorMessage("Nickname is in invalid format", false);
             return;
         }
 
-        errorMessageLocal.setVisible(false);
-        errorMessageLocal.setText("");
-        errorMessageNetwork.setVisible(false);
-        errorMessageNetwork.setText("");
-
-        Platform.runLater(() -> {
-            try {
-                operator.startLocalGame(leftPlayerNickname, rightPlayerNickname);
-            } catch (OperatorException e) {
-                System.out.println("Error while starting local game " + e.toString());
-            }
-        });
+        app.startLocalGame(leftPlayerNickname, rightPlayerNickname);
     }
 
-    private Operator operator;
+    private App app;
 
-    public LoginController(Operator operator) {
-        this.operator = operator;
+    /**
+     * Instantiates a new Login controller.
+     *
+     * @param app the app
+     */
+    public LoginController(App app) {
+        this.app = app;
     }
 
     @Override
@@ -121,6 +132,24 @@ public class LoginController implements Initializable {
         portTF.textProperty().addListener((observable, oldPort, newPort) -> {
             if (!newPort.matches("\\d*")) {
                 portTF.setText(oldPort);
+            }
+        });
+    }
+
+    public void setErrorMessage(String message, Boolean isNetworkMessage) {
+        Platform.runLater(() -> {
+            errorMessageNetwork.setText("");
+            errorMessageLocal.setText("");
+
+            if (message == null || message.isEmpty()) {
+                return;
+            }
+
+            if (isNetworkMessage) {
+                errorMessageNetwork.setText(message);
+            }
+            else {
+                errorMessageLocal.setText(message);
             }
         });
     }

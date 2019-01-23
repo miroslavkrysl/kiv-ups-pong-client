@@ -2,6 +2,7 @@ package Pong.Game;
 
 import Pong.App;
 import Pong.Game.Types.Side;
+import javafx.animation.AnimationTimer;
 import javafx.beans.property.*;
 
 /**
@@ -38,6 +39,7 @@ public abstract class Game {
     public static final int HEIGHT = 1080;
 
     protected App app;
+    private AnimationTimer timer;
 
     private StringProperty nicknameLeft;
     private StringProperty nicknameRight;
@@ -70,17 +72,21 @@ public abstract class Game {
         this.playerLeft = new Player();
         this.playerRight = new Player();
         this.ball = new Ball();
+
+        this.timer = new GameTimer(this);
+        timer.start();
     }
 
     @Override
     protected void finalize() throws Throwable {
         super.finalize();
+        this.timer.stop();
     }
 
     /**
      * Sets ball position to center with no speed and set the game phase to WAITING.
      */
-    public void newRound() {
+    synchronized public void newRound() {
         phase.set(Phase.WAITING);
         ball.setState(new BallState());
     }
@@ -88,7 +94,7 @@ public abstract class Game {
     /**
      * Sets game phase to START.
      */
-    public void startRound() {
+    synchronized public void startRound() {
         phase.set(Phase.START);
     }
 

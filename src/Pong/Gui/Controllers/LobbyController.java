@@ -1,7 +1,7 @@
 package Pong.Gui.Controllers;
 
-import Pong.Networ.Connection;
-import Pong.Operator;
+import Pong.App;
+import Pong.Network.Connection;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -27,23 +27,24 @@ public class LobbyController implements Initializable {
 
     @FXML
     void join(ActionEvent event) {
-        operator.requestJoinGame();
+        app.joinGame();
     }
 
     @FXML
     void disconnect(ActionEvent event) {
-        operator.requestDisconnect();
+        app.disconnect();
     }
 
-    private Operator operator;
+    private App app;
+    private Connection connection;
 
-    public LobbyController(Operator operator) {
-        this.operator = operator;
+    public LobbyController(App app, Connection connection) {
+        this.app = app;
+        this.connection = connection;
     }
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        Connection connection = operator.getConnection();
         ip.setText(connection.getAddress().getHostString());
         port.setText(Integer.toString(connection.getAddress().getPort()));
     }
